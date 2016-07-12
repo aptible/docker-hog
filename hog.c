@@ -6,7 +6,7 @@
 #include <signal.h>
 #include <limits.h>
 
-#define CHECKPOINT_COUNT 64
+#define DEFAULT_CHECKPOINTS 64
 
 static int term_requested = 0;
 
@@ -57,7 +57,13 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	fprintf(stdout, "hog: hog up to %ld bytes over %ld second(s)\n", hog_max_bytes, hog_goal_seconds);
+	long hog_checkpoints = DEFAULT_CHECKPOINTS;
+	if (assign_env_pos_long("HOG_CHECKPOINTS", &hog_checkpoints)) {
+		return 1;
+	}
+
+	fprintf(stdout, "hog: hog up to %ld bytes over %ld second(s) with %ld checkpoint(s)\n",
+		hog_max_bytes, hog_goal_seconds, hog_checkpoints);
 	fflush(stdout);
 
 	if (hog_wait_seconds > 0) {
@@ -71,6 +77,7 @@ int main(int argc, char* argv[]) {
 
 	long page_size = sysconf(_SC_PAGESIZE);
 	long hogged_bytes = 0;
+	long hogged_checkpoints = 0;
 	long next_checkpoint_bytes = 0;
 
 	while(1) {
@@ -86,13 +93,15 @@ int main(int argc, char* argv[]) {
 			break;
 		}
 
-		if (hogged_bytes > next_checkpoint_bytes) {
-			next_checkpoint_bytes += hog_max_bytes / CHECKPOINT_COUNT;
-			fprintf(stdout, "hog: checkpoint: %ld\n", hogged_bytes);
+		if ((hog_checkpoints > 0) && (hogged_bytes >= next_checkpoint_bytes)) {
+			next_checkpoint_bytes += hog_max_bytes / hog_checkpoints;
+			fprintf(stdout, "hog: checkpoint %ld: %ld bytes\n",
+				hogged_checkpoints, hogged_bytes);
 			fflush(stdout);
 			if (hog_goal_seconds > 0) {
-				usleep(1000 * 1000 * hog_goal_seconds / CHECKPOINT_COUNT);
+				usleep(1000 * 1000 * hog_goal_seconds / hog_checkpoints);
 			}
+			hogged_checkpoints += 1;
 		}
 
 		char* range = (char*) malloc(page_size);
