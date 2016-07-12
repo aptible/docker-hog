@@ -12,6 +12,10 @@ allocation.
 + `HOG_GOAL_SECONDS`: how long should the allocation of `HOG_MAX_BYTES` happen
   over? Default is `0`, which means hog as fast as possible. Set to e.g. `60`
   for the hogging to happen over a minute.
++ `HOG_CHECKPOINTS`: how often should the hog stop and sleep in order to hit
+  `HOG_GOAL_SECONDS`? The higher this number, the more accurate the stopping
+  point (and the more likely the hog is to stop if it receives `SIGTERM`).
+  Default is `64`.
 
 
 ## Copyright and License ##
